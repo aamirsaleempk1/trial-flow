@@ -1,3 +1,7 @@
+'use client';
+
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import VoiceInput from '@/components/VoiceInput';
 import TextInput from '@/components/TextInput';
 import PseudoCodeVerification from '@/components/PseudoCodeVerification';
@@ -5,271 +9,211 @@ import ExplanationPanel from '@/components/ExplanationPanel';
 import ResultsPanel from '@/components/ResultsPanel';
 import { sampleTrial } from '@/lib/samples';
 
+type InputMode = 'voice' | 'text';
 
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Wand2, FileText } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Volume2, Languages, AlertCircle, CheckCircle, Zap } from 'lucide-react';
+export default function Home() {
+  const [inputMode, setInputMode] = useState<InputMode>('text');
+  const [rawInput, setRawInput] = useState('');
+  const [pseudoCode, setPseudoCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [verificationMode, setVerificationMode] = useState(false);
+  const [results, setResults] = useState(null);
+  const [explanation, setExplanation] = useState(null);
+  const [activeTab, setActiveTab] = useState<'results' | 'explanation'>('results');
 
-'use client';
+  const handleVoiceInput = async (transcript: string, detectedLanguage: string) => {
+    setRawInput(transcript);
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setPseudoCode(`// Pseudo-code generated from voice input
+TRIAL: "Diabetes Study"
+DESCRIPTION: "Evaluating AI-powered glucose monitoring"
 
-interface VoiceInputProps {
-  onTranscript: (transcript: string, language: string) => void;
-  isLoading: boolean;
-}
+INCLUDE patients WHERE:
+  diagnosis IS "Type 2 Diabetes"
+  age BETWEEN 40 AND 75
+  a1c_level > 7.0
+  language IS "en" OR "es"
 
-export default function VoiceInput({ onTranscript, isLoading }: VoiceInputProps) {
-  const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [detectedLanguage, setDetectedLanguage] = useState('en');
-  const [isSupported, setIsSupported] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
+EXCLUDE patients WHERE:
+  has_condition IS "Severe CKD"
 
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setIsSupported(false);
-      setError('Voice input is not supported in this browser');
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onresult = (event: any) => {
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        }
-      }
-      if (finalTranscript) {
-        setTranscript(finalTranscript);
-        // Auto-submit after pause
-        setTimeout(() => {
-          if (finalTranscript.trim().length > 10) {
-            onTranscript(finalTranscript.trim(), detectedLanguage);
-            stopListening();
-          }
-        }, 2000);
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      if (event.error === 'not-allowed') {
-        setError('Microphone access denied. Please allow microphone access.');
-      } else {
-        setError(`Error: ${event.error}`);
-      }
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognitionRef.current = recognition;
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, [onTranscript, detectedLanguage]);
-
-  const startListening = () => {
-    setError(null);
-    setTranscript('');
-    try {
-      recognitionRef.current?.start();
-      setIsListening(true);
-    } catch (err: any) {
-      setError(err.message);
-    }
+REQUIRE:
+  weekly_glucose_readings for 12 weeks`);
+    setVerificationMode(true);
+    setLoading(false);
   };
 
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
+  const handleTextInput = async (text: string) => {
+    setRawInput(text);
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setPseudoCode(`// Pseudo-code generated from text input
+TRIAL: "Clinical Trial"
+DESCRIPTION: "Patient selection for clinical study"
+
+INCLUDE patients WHERE:
+  diagnosis IS "Type 2 Diabetes"
+  age BETWEEN 40 AND 75
+  a1c_level > 7.0`);
+    setVerificationMode(true);
+    setLoading(false);
   };
 
-  if (!isSupported) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700">Voice Input Unsupported</h3>
-          <p className="text-sm text-gray-500 mt-2">Please use the Text Input mode instead</p>
-        </div>
-      </div>
-    );
-  }
+  const handleVerifyAndRun = async (verifiedPseudo: string) => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setResults({
+      patients: [
+        { id: 'P001', name: 'John Doe', age: 58, sex: 'Male', language: 'en' },
+        { id: 'P002', name: 'Maria Garcia', age: 62, sex: 'Female', language: 'es' },
+        { id: 'P003', name: 'Wei Chen', age: 55, sex: 'Male', language: 'zh' },
+        { id: 'P004', name: 'Sarah Johnson', age: 70, sex: 'Female', language: 'en' },
+      ],
+      count: 4,
+      executionTime: '245ms'
+    });
+    setExplanation(`## Clinical Trial Explanation
+
+### Variables Used
+- **Diagnosis**: Type 2 Diabetes - confirmed by ICD-10 coding
+- **Age Range**: 40-75 years - optimal for diabetes intervention studies
+- **A1c Level**: >7.0% - indicates poorly controlled diabetes
+
+### Clinical Implications
+- Patients with elevated A1c represent high-need population
+- Age range captures typical onset and progression timeline
+- Multi-language inclusion improves study diversity
+
+### Data Quality
+- All patient records verified
+- Missing data points excluded
+- Confidence: High`);
+    setVerificationMode(false);
+    setLoading(false);
+  };
+
+  const handleRegenerate = () => {
+    setVerificationMode(false);
+    setPseudoCode('');
+    setRawInput('');
+    setResults(null);
+    setExplanation(null);
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full ${
-          isListening ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-600'
-        }`}>
-          {isListening ? (
-            <>
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-sm font-medium">Listening...</span>
-            </>
-          ) : (
-            <>
-              <MicOff className="w-4 h-4" />
-              <span className="text-sm font-medium">Not listening</span>
-            </>
-          )}
-        </div>
-        <button
-          onClick={isListening ? stopListening : startListening}
-          disabled={isLoading}
-          className={`p-4 rounded-full transition-all ${
-            isListening ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/30' : 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30'
-          }`}
-        >
-          {isListening ? (
-            <MicOff className="w-6 h-6 text-white" />
-          ) : (
-            <Mic className="w-6 h-6 text-white" />
-          )}
-        </button>
-      </div>
-
-      <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 p-4 overflow-auto">
-        {transcript ? (
-          <div className="space-y-2">
-            <div className="text-sm text-gray-500">Transcript</div>
-            <p className="text-gray-800 leading-relaxed">{transcript}</p>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            <div className="text-center">
-              {isListening ? (
-                <>
-                  <Volume2 className="w-12 h-12 mx-auto mb-3 animate-pulse" />
-                  <p>Speak your trial criteria...</p>
-                </>
-              ) : (
-                <>
-                  <MicOff className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Click the microphone to start speaking</p>
-                </>
-              )}
+    <div className="flex flex-col h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xl">TF</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">TrialFlow</h1>
+              <p className="text-xs text-gray-500">AI-Powered Clinical Trial DSL</p>
             </div>
           </div>
-        )}
-      </div>
-
-      {error && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-
-
-
-interface TextInputProps {
-  onTextSubmit: (text: string) => void;
-  isLoading: boolean;
-}
-
-export default function TextInput({ onTextSubmit, isLoading }: TextInputProps) {
-  const [text, setText] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 300)}px`;
-    }
-  }, [text]);
-
-  const handleSubmit = () => {
-    if (text.trim().length > 10) {
-      onTextSubmit(text.trim());
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
-  const examples = [
-    'Type 2 Diabetes patients age 40-75 with A1c > 7.0, English or Spanish speakers',
-    'Patients with hypertension, age 45-70, BMI > 25',
-    'Adults with confirmed COVID-19, oxygen saturation < 94%',
-  ];
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 relative">
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Describe your trial criteria in plain language..."
-          className="w-full h-full resize-none p-4 border border-gray-200 rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all font-sans text-gray-800"
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="mt-3">
-        <div className="flex items-center space-x-2 text-xs text-gray-500 mb-2">
-          <FileText className="w-3 h-3" />
-          <span>Quick examples:</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {examples.map((example, idx) => (
+          
+          <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
             <button
-              key={idx}
-              onClick={() => setText(example)}
-              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
+              onClick={() => setInputMode('text')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                inputMode === 'text' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
-              {example.length > 30 ? example.substring(0, 30) + '...' : example}
+              ⌨️ Text
             </button>
-          ))}
+            <button
+              onClick={() => setInputMode('voice')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                inputMode === 'voice' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              🎤 Voice
+            </button>
+          </div>
+          
+          <button
+            onClick={handleRegenerate}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            New Trial
+          </button>
         </div>
-      </div>
+      </header>
 
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-xs text-gray-400">
-          <Wand2 className="w-3 h-3" />
-          <span>AI will extract keywords and generate pseudo-code</span>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Panel */}
+        <div className="w-1/2 border-r border-gray-200 bg-white flex flex-col">
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">
+              {inputMode === 'voice' ? '🎤 Voice Input' : '⌨️ Text Input'}
+            </span>
+            <span className="text-xs text-gray-500">
+              {inputMode === 'voice' ? 'Speak your trial criteria' : 'Type your trial criteria'}
+            </span>
+          </div>
+          
+          <div className="flex-1 p-4">
+            {verificationMode ? (
+              <PseudoCodeVerification
+                pseudoCode={pseudoCode}
+                keywords={['diabetes', 'age', 'A1c', 'language', 'CKD']}
+                confidence={0.85}
+                rawInput={rawInput}
+                onVerify={handleVerifyAndRun}
+                onCancel={handleRegenerate}
+                isLoading={loading}
+              />
+            ) : inputMode === 'voice' ? (
+              <VoiceInput onTranscript={handleVoiceInput} isLoading={loading} />
+            ) : (
+              <TextInput onTextSubmit={handleTextInput} isLoading={loading} />
+            )}
+          </div>
         </div>
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading || text.length < 10}
-          className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-        >
-          {isLoading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Processing...</span>
-            </>
-          ) : (
-            <>
-              <Send className="w-4 h-4" />
-              <span>Generate Trial</span>
-            </>
-          )}
-        </button>
+
+        {/* Right Panel */}
+        <div className="w-1/2 flex flex-col bg-gray-50">
+          <div className="flex border-b border-gray-200 bg-white">
+            <button
+              onClick={() => setActiveTab('results')}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'results'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              📊 Results
+            </button>
+            <button
+              onClick={() => setActiveTab('explanation')}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'explanation'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              💡 Explanation
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-auto p-4">
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+                  <p className="text-gray-600">Processing your trial...</p>
+                </div>
+              </div>
+            ) : activeTab === 'results' ? (
+              <ResultsPanel results={results} />
+            ) : (
+              <ExplanationPanel explanation={explanation} />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
