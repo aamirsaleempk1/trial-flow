@@ -6,13 +6,14 @@ import ResultsPanel from '@/components/ResultsPanel';
 import { sampleTrial } from '@/lib/samples';
 
 
-
-
-'use client';
-
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Sparkles, Wand2, FileText } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Volume2, Languages, AlertCircle, CheckCircle, Zap } from 'lucide-react';
+
+'use client';
 
 interface VoiceInputProps {
   onTranscript: (transcript: string, language: string) => void;
@@ -178,11 +179,7 @@ export default function VoiceInput({ onTranscript, isLoading }: VoiceInputProps)
 
 
 
-'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Wand2, FileText } from 'lucide-react';
 
 interface TextInputProps {
   onTextSubmit: (text: string) => void;
